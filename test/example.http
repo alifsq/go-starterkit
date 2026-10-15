@@ -1,0 +1,25 @@
+### Variables
+@baseUrl = http://localhost:8080/api/v1
+
+### 1. Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "dev@example.com",
+  "password": "password123"
+}
+
+### Ambil token dari response login di atas
+@accessToken = {{login.response.body.data.access_token}}
+
+### 2. Test Protected Route (Pakai Access Token Otomatis)
+GET {{baseUrl}}/users/profile
+Authorization: Bearer {{accessToken}}
+
+### 3. Test Refresh Token (Cookie dikirim otomatis)
+POST {{baseUrl}}/auth/refresh
+
+### 4. Test Logout
+POST {{baseUrl}}/auth/logout

@@ -1,0 +1,31 @@
+//go:build wireinject
+// +build wireinject
+
+package bootstrap
+
+import (
+	"go-starterkit/internal/config"
+	"go-starterkit/internal/modules/auth"
+	user "go-starterkit/internal/modules/users"
+	"go-starterkit/internal/package/jwt"
+	"go-starterkit/internal/router"
+
+	"github.com/google/wire"
+)
+
+
+func InitializeApp() (*App, func(), error) {
+	wire.Build(
+		config.LoadConfig,  // Provider Config
+		wire.FieldsOf(new(*config.Config), "JwtSecret"),
+		config.DatabaseSet, // Provider Database (GORM)
+		jwt.JWTSet,         // Provider JWT Service <--- (PENTING)
+		user.UserSet,       // Provider User Repo, Service, Handler
+		auth.AuthSet,       // Provider Auth Repo, Service, Handler <--- (PENTING)
+		router.RouterSet,   // Provider AppHandler
+		NewWorker,          // Provider Worker Cleanup
+		NewApp,             // Provider App Engine
+	)
+	return nil, nil, nil
+
+}
