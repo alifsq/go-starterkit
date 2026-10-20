@@ -2,28 +2,35 @@ package auth
 
 import (
 	"errors"
-	"go-starterkit/internal/middleware"
+	"go-starterkit/internal/package/constants"
+	"go-starterkit/internal/package/logger"
 	"go-starterkit/internal/response"
 	"io"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 )
 
 type HandlerAuth struct {
-	service ServiceAuth
+	service     ServiceAuth
+	rateLimiter *inMemoryRateLimiter
+	log         logger.Logger
 }
 
-func NewHandlerAuth(s ServiceAuth) *HandlerAuth {
+func NewHandlerAuth(s ServiceAuth, log logger.Logger) *HandlerAuth {
 	return &HandlerAuth{
-		service: s,
+		service:     s,
+		rateLimiter: newInMemoryRateLimiter(),
+		log:         log,
 	}
 }
 
 const refreshCookiePath = "/api/v1/auth"
 
 func setRefreshCookie(c *gin.Context, token string, maxAge int) {
-	// secure := c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
 	c.SetCookie("refresh_token", token, maxAge, refreshCookiePath, "", false, true)
 }
 
@@ -39,18 +46,33 @@ func readRefreshToken(c *gin.Context) (string, error) {
 	return req.RefreshToken, nil
 }
 
+func (h *HandlerAuth) rateLimit(c *gin.Context, bucket string, max int, window time.Duration) bool {
+	if !h.rateLimiter.Allow(bucket+":"+c.ClientIP(), window, max) {
+		c.Header("Retry-After", strconv.Itoa(int(window.Seconds())))
+		response.Error(c, http.StatusTooManyRequests, "Too many requests. Please try again later.", nil)
+		return false
+	}
+	return true
+}
+
 func (h *HandlerAuth) Login(c *gin.Context) {
+	if !h.rateLimit(c, "login", 5, time.Minute) {
+		return
+	}
+
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		if formattedErrs := response.FormatValidationError(err); formattedErrs != nil {
+			response.Error(c, http.StatusBadRequest, "Validasi input gagal", formattedErrs)
+			return
+		}
 		response.Error(c, http.StatusBadRequest, "Invalid request", err.Error())
 		return
 	}
 
-	// 1. Ambil User-Agent & Client IP dari Gin Context
 	userAgent := c.Request.UserAgent()
 	ipAddress := c.ClientIP()
 
-	// 2. Oper ke Service
 	accessToken, refreshToken, err := h.service.Login(c.Request.Context(), req.Email, req.Password, userAgent, ipAddress)
 	if err != nil {
 		response.Error(c, http.StatusUnauthorized, err.Error(), nil)
@@ -62,46 +84,42 @@ func (h *HandlerAuth) Login(c *gin.Context) {
 		"access_token": accessToken,
 	})
 }
+
 func (h *HandlerAuth) Logout(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err == nil && refreshToken != "" {
-
 		_ = h.service.Logout(c.Request.Context(), refreshToken)
 	}
 
-	// 2. Hapus Cookie di browser client dengan menyetel MaxAge = -1
-	// Argumen: (name, value, maxAge, path, domain, secure, httpOnly)
 	setRefreshCookie(c, "", -1)
-
 	response.Success(c, http.StatusOK, "Logout Success", nil)
 }
 
 func (h *HandlerAuth) Register(c *gin.Context) {
 	var req RegisterRequest
-
-	// Validasi Input Payload/Body JSON
 	if err := c.ShouldBindJSON(&req); err != nil {
+		if formattedErrs := response.FormatValidationError(err); formattedErrs != nil {
+			response.Error(c, http.StatusBadRequest, "Validasi input gagal", formattedErrs)
+			return
+		}
 		response.Error(c, http.StatusBadRequest, "Payload request Not Found", err.Error())
 		return
 	}
 
-	// Service Register
-	_, err := h.service.Register(c.Request.Context(), &req)
+	err := h.service.Register(c.Request.Context(), &req)
 	if err != nil {
 		if errors.Is(err, response.ErrEmailExist) {
 			response.Error(c, http.StatusConflict, "Email already registered", nil)
 			return
 		}
-
-		response.Error(c, http.StatusInternalServerError, "Failed Registration User", nil)
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
 		return
 	}
 
-	// Response Sucess HTTP 201 Created
 	response.Success(c, http.StatusCreated, "Registrasi Success,Please login", nil)
 }
+
 func (h *HandlerAuth) Refresh(c *gin.Context) {
-	// Cookie is preferred; JSON body is supported for API clients without a cookie jar.
 	refreshTokenStr, err := readRefreshToken(c)
 	if err != nil {
 		response.Error(c, http.StatusBadRequest, "Invalid request", err.Error())
@@ -112,27 +130,21 @@ func (h *HandlerAuth) Refresh(c *gin.Context) {
 		return
 	}
 
-	// 2. Minta service melakukan verifikasi & rotation
 	newAccessToken, newRefreshToken, err := h.service.RefreshToken(c.Request.Context(), refreshTokenStr)
 	if err != nil {
-		// Hapus cookie invalid jika token kedaluwarsa/di-revoke
 		setRefreshCookie(c, "", -1)
 		response.Error(c, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
 
-	// 3. Set HttpOnly Cookie baru untuk Refresh Token berikutnya
 	setRefreshCookie(c, newRefreshToken, 604800)
-
-	// 4. Kirim Access Token baru ke response JSON
 	response.Success(c, http.StatusOK, "Refresh Token Success", gin.H{
 		"access_token": newAccessToken,
 	})
 }
 
 func (h *HandlerAuth) RevokeAll(c *gin.Context) {
-	// Ambil langsung dari Gin Context
-	val, exists := c.Get(middleware.CtxUserID)
+	val, exists := c.Get(constants.CtxUserRole.String())
 	if !exists {
 		response.Error(c, http.StatusUnauthorized, "User ID tidak ditemukan", nil)
 		return
@@ -144,7 +156,6 @@ func (h *HandlerAuth) RevokeAll(c *gin.Context) {
 		return
 	}
 
-	// Panggil service
 	if err := h.service.LogoutAllDevices(c.Request.Context(), userID); err != nil {
 		response.Error(c, http.StatusInternalServerError, "Gagal mencabut seluruh sesi", err.Error())
 		return
@@ -152,4 +163,48 @@ func (h *HandlerAuth) RevokeAll(c *gin.Context) {
 
 	setRefreshCookie(c, "", -1)
 	response.Success(c, http.StatusOK, "Berhasil logout dari seluruh perangkat", nil)
+}
+
+func (h *HandlerAuth) VerifyEmail(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		response.Error(c, http.StatusBadRequest, "Verification Token Is Required", nil)
+		return
+	}
+
+	if err := h.service.VerifyEmail(c, token); err != nil {
+		h.log.Warn("Email Verification Failed", zap.Error(err))
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Email Verified Successfully You Can Now Login", nil)
+}
+
+func (h *HandlerAuth) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.log.Warn("Invalid Forgot Password Request Failed", zap.Error(err))
+		response.Error(c, http.StatusInternalServerError, "Invalid Request Payload", err.Error())
+		return
+	}
+	if err := h.service.ForgotPassword(c, req.Email); err != nil {
+		h.log.Error("Forgot Password Process Failed", zap.String("email", req.Email))
+		return
+	}
+	response.Error(c, http.StatusOK, "If your email is registered, we have sent a password reset link to your email.", nil)
+}
+
+func (h *HandlerAuth) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		h.log.Warn("Invalid reset password request payload", zap.Error(err))
+		response.Error(c, http.StatusBadRequest, "Invalid Request Payload", err.Error())
+		return
+	}
+	if err := h.service.ResetPassword(c, req.Token, req.NewPassword); err != nil {
+		h.log.Warn("Reset password failed", zap.Error(err))
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Password Reset SuccessFully , you acn now Login", nil)
 }

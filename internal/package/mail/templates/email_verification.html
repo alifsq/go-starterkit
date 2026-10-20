@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Verifikasi Email - PasarDesa</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  </head>
+  <body class="m-0 bg-slate-100 px-4 py-10 font-sans text-slate-800">
+    <div
+      class="mx-auto max-w-xl overflow-hidden rounded-2xl bg-white shadow-xl"
+    >
+      <!-- Header -->
+      <div class="border-b border-slate-100 px-8 py-6">
+        <div class="flex items-center justify-between gap-4">
+          <div class="text-2xl font-extrabold tracking-tight text-slate-900">
+            <span class="text-emerald-500">✿</span> PasarDesa
+          </div>
+          <span class="text-xs text-slate-500"> Bersama Membangun Desa </span>
+        </div>
+      </div>
+
+      <!-- Main Content -->
+      <div class="px-8 py-10 text-center sm:px-12">
+        <div
+          class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-blue-50 text-5xl"
+        >
+          ✉️
+        </div>
+
+        <h1 class="mb-4 text-3xl font-bold tracking-tight text-slate-900">
+          Verifikasi Email Anda
+        </h1>
+
+        <p class="mb-3 text-base leading-7 text-slate-600">
+          Halo,
+        </p>
+
+        <p class="mb-8 text-base leading-7 text-slate-600">
+          Terima kasih telah bergabung dengan PasarDesa! Klik tombol di bawah
+          untuk memverifikasi alamat email Anda dan menyelesaikan proses
+          pendaftaran.
+        </p>
+
+        <!-- Verification Button -->
+        <a
+          href="{{.VerifyURL}}"
+          class="inline-block rounded-xl bg-blue-600 px-10 py-4 text-base font-bold text-white shadow-lg shadow-blue-600/20"
+          style="color: #ffffff; text-decoration: none"
+        >
+          Verifikasi Email &nbsp; →
+        </a>
+
+        <p class="mt-6 text-sm text-slate-500">
+          ⏱ Tautan berlaku selama
+          <strong class="text-slate-700">24 jam</strong>.
+        </p>
+
+        <!-- Security Notice -->
+        <div
+          class="mt-9 rounded-xl border border-blue-100 bg-blue-50 p-5 text-left"
+        >
+          <p class="mb-2 font-bold text-slate-800">
+            🛡️ Bukan Anda yang mendaftar?
+          </p>
+          <p class="text-sm leading-6 text-slate-600">
+            Abaikan email ini. Akun Anda tidak akan aktif melalui tautan ini
+            tanpa proses verifikasi.
+          </p>
+        </div>
+
+        <!-- Fallback Link -->
+        <div class="mt-8 text-left">
+          <p class="mb-2 text-sm text-slate-500">
+            Jika tombol tidak berfungsi, salin tautan berikut ke browser Anda:
+          </p>
+          <p class="break-all text-sm text-blue-600">{{.VerifyURL}}</p>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="border-t border-slate-100 bg-slate-50 px-8 py-7 text-center">
+        <p class="mb-1 text-sm text-slate-500">Salam hangat,</p>
+        <p class="font-bold text-slate-800">Tim PasarDesa</p>
+        <p class="mt-5 text-xs leading-5 text-slate-400">
+          © {{.Year}} PasarDesa. Semua hak dilindungi.<br />
+          Email otomatis, mohon tidak membalas pesan ini.
+        </p>
+      </div>
+    </div>
+  </body>
+</html>

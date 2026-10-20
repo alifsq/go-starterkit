@@ -11,6 +11,7 @@ import (
 	"go-starterkit/internal/modules/auth"
 	"go-starterkit/internal/modules/users"
 	"go-starterkit/internal/package/jwt"
+	"go-starterkit/internal/package/mail"
 	"go-starterkit/internal/router"
 )
 
@@ -18,6 +19,10 @@ import (
 
 func InitializeApp() (*App, func(), error) {
 	configConfig, err := config.LoadConfig()
+	if err != nil {
+		return nil, nil, err
+	}
+	logger, err := NewZapLogger(configConfig)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -37,9 +42,11 @@ func InitializeApp() (*App, func(), error) {
 	serviceUser := user.NewServiceUser(repositoryUser)
 	handlerUser := user.NewHandlerUser(serviceUser)
 	repositoryAuth := auth.NewRepositoryAuth(query, gormDB)
-	serviceAuth := auth.NewServiceAuth(repositoryAuth, repositoryUser, jwtService)
-	handlerAuth := auth.NewHandlerAuth(serviceAuth)
-	appHandler := router.NewAppHandler(configConfig, jwtService, handlerUser, handlerAuth)
+	mailerConfig := NewMailerConfig(configConfig)
+	mailer := mail.NewMailer(mailerConfig, logger)
+	serviceAuth := auth.NewServiceAuth(repositoryAuth, repositoryUser, jwtService, mailer, logger)
+	handlerAuth := auth.NewHandlerAuth(serviceAuth, logger)
+	appHandler := router.NewAppHandler(configConfig, logger, jwtService, handlerUser, handlerAuth)
 	worker := NewWorker(serviceAuth)
 	app := NewApp(configConfig, appHandler, worker)
 	return app, func() {

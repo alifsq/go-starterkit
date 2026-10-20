@@ -16,30 +16,38 @@ import (
 )
 
 var (
-	Q            = new(Query)
-	RefreshToken *refreshToken
-	User         *user
+	Q                      = new(Query)
+	EmailVerificationToken *emailVerificationToken
+	PasswordResetToken     *passwordResetToken
+	RefreshToken           *refreshToken
+	User                   *user
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	EmailVerificationToken = &Q.EmailVerificationToken
+	PasswordResetToken = &Q.PasswordResetToken
 	RefreshToken = &Q.RefreshToken
 	User = &Q.User
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
-		db:           db,
-		RefreshToken: newRefreshToken(db, opts...),
-		User:         newUser(db, opts...),
+		db:                     db,
+		EmailVerificationToken: newEmailVerificationToken(db, opts...),
+		PasswordResetToken:     newPasswordResetToken(db, opts...),
+		RefreshToken:           newRefreshToken(db, opts...),
+		User:                   newUser(db, opts...),
 	}
 }
 
 type Query struct {
 	db *gorm.DB
 
-	RefreshToken refreshToken
-	User         user
+	EmailVerificationToken emailVerificationToken
+	PasswordResetToken     passwordResetToken
+	RefreshToken           refreshToken
+	User                   user
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -48,9 +56,11 @@ func (q *Query) UnderlyingDB() *gorm.DB { return q.db }
 
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		RefreshToken: q.RefreshToken.clone(db),
-		User:         q.User.clone(db),
+		db:                     db,
+		EmailVerificationToken: q.EmailVerificationToken.clone(db),
+		PasswordResetToken:     q.PasswordResetToken.clone(db),
+		RefreshToken:           q.RefreshToken.clone(db),
+		User:                   q.User.clone(db),
 	}
 }
 
@@ -64,21 +74,27 @@ func (q *Query) WriteDB() *Query {
 
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
-		db:           db,
-		RefreshToken: q.RefreshToken.replaceDB(db),
-		User:         q.User.replaceDB(db),
+		db:                     db,
+		EmailVerificationToken: q.EmailVerificationToken.replaceDB(db),
+		PasswordResetToken:     q.PasswordResetToken.replaceDB(db),
+		RefreshToken:           q.RefreshToken.replaceDB(db),
+		User:                   q.User.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	RefreshToken IRefreshTokenDo
-	User         IUserDo
+	EmailVerificationToken IEmailVerificationTokenDo
+	PasswordResetToken     IPasswordResetTokenDo
+	RefreshToken           IRefreshTokenDo
+	User                   IUserDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		RefreshToken: q.RefreshToken.WithContext(ctx),
-		User:         q.User.WithContext(ctx),
+		EmailVerificationToken: q.EmailVerificationToken.WithContext(ctx),
+		PasswordResetToken:     q.PasswordResetToken.WithContext(ctx),
+		RefreshToken:           q.RefreshToken.WithContext(ctx),
+		User:                   q.User.WithContext(ctx),
 	}
 }
 

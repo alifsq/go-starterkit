@@ -8,15 +8,15 @@ import (
 	"go-starterkit/internal/modules/auth"
 	user "go-starterkit/internal/modules/users"
 	"go-starterkit/internal/package/jwt"
+	"go-starterkit/internal/package/mail"
 	"go-starterkit/internal/router"
 
 	"github.com/google/wire"
 )
 
-
 func InitializeApp() (*App, func(), error) {
 	wire.Build(
-		config.LoadConfig,  // Provider Config
+		config.LoadConfig, // Provider Config
 		wire.FieldsOf(new(*config.Config), "JwtSecret"),
 		config.DatabaseSet, // Provider Database (GORM)
 		jwt.JWTSet,         // Provider JWT Service <--- (PENTING)
@@ -25,6 +25,9 @@ func InitializeApp() (*App, func(), error) {
 		router.RouterSet,   // Provider AppHandler
 		NewWorker,          // Provider Worker Cleanup
 		NewApp,             // Provider App Engine
+		NewZapLogger,       // Provider Logger
+		NewMailerConfig,    // Provider Mailer Config
+		mail.MailSet,       // Provider Mailer
 	)
 	return nil, nil, nil
 

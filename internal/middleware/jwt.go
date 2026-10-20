@@ -1,17 +1,14 @@
 package middleware
 
 import (
+	"go-starterkit/internal/package/constants"
 	"go-starterkit/internal/package/jwt"
 	"go-starterkit/internal/response"
+
 	"net/http"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-)
-
-const (
-	CtxUserID   = "user_id"
-	CtxUserRole = "user_role"
 )
 
 // Auth memvalidasi Access Token dari Header Authorization
@@ -44,8 +41,8 @@ func Auth(jwtService jwt.JWTService) gin.HandlerFunc {
 		}
 
 		// 4. Inject UserID dan Role ke Gin Context
-		c.Set(CtxUserID, claims.UserID)
-		c.Set(CtxUserRole, claims.Role)
+		c.Set(constants.CtxUserID, claims.UserID)
+		c.Set(constants.CtxUserRole, claims.Role)
 
 		c.Next()
 	}

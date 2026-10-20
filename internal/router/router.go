@@ -6,6 +6,7 @@ import (
 	"go-starterkit/internal/modules/auth"
 	user "go-starterkit/internal/modules/users"
 	"go-starterkit/internal/package/jwt"
+	"go-starterkit/internal/package/logger"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -21,6 +22,7 @@ type AppHandler struct {
 	config *config.Config
 
 	// Add Handler In Here
+	log         logger.Logger
 	jwtSvc      jwt.JWTService
 	UserHandler *user.HandlerUser
 	AuthHandler *auth.HandlerAuth
@@ -28,6 +30,7 @@ type AppHandler struct {
 
 func NewAppHandler(
 	cfg *config.Config,
+	log logger.Logger,
 	jwtSvc jwt.JWTService,
 	userH *user.HandlerUser,
 	AuthH *auth.HandlerAuth,
@@ -43,6 +46,8 @@ func NewAppHandler(
 func (app *AppHandler) RegisterRoutes(r *gin.Engine) {
 
 	r.Use(middleware.CORS())
+	r.Use(middleware.LoggerMiddleware(app.log))
+	r.Use(gin.Recovery())
 
 	// Health Check
 	r.GET("/health", func(c *gin.Context) {

@@ -14,18 +14,20 @@ const TableNameUser = "users"
 
 // User mapped from table <users>
 type User struct {
-	ID            int64          `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
-	Name          string         `gorm:"column:name;not null" json:"name"`
-	Email         string         `gorm:"column:email;not null" json:"email"`
-	PasswordHash  string         `gorm:"column:password_hash;not null" json:"password_hash"`
-	Phone         *string        `gorm:"column:phone" json:"phone"`
-	Address       *string        `gorm:"column:address" json:"address"`
-	Role          string         `gorm:"column:role;not null;default:user" json:"role"`
-	IsActive      bool           `gorm:"column:is_active;not null;default:1" json:"is_active"`
-	CreatedAt     time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;<-:create;autoCreateTime" json:"created_at"`
-	UpdatedAt     time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;<-:update;autoUpdateTime" json:"updated_at"`
-	DeletedAt     gorm.DeletedAt `gorm:"column:deleted_at" json:"deleted_at"`
-	RefreshTokens []RefreshToken `gorm:"foreignKey:UserID;references:ID" json:"refresh_tokens"`
+	ID              int64          `gorm:"column:id;primaryKey;autoIncrement:true" json:"id"`
+	Name            string         `gorm:"column:name;not null" json:"name"`
+	Email           string         `gorm:"column:email;not null" json:"email"`
+	IsEmailVerified bool           `gorm:"column:is_email_verified;not null" json:"is_email_verified"`
+	EmailVerifiedAt *time.Time     `gorm:"column:email_verified_at" json:"email_verified_at"`
+	PasswordHash    string         `gorm:"column:password_hash;not null" json:"password_hash"`
+	Phone           *string        `gorm:"column:phone" json:"phone"`
+	Address         *string        `gorm:"column:address" json:"address"`
+	Role            string         `gorm:"column:role;not null;default:user" json:"role"`
+	IsActive        bool           `gorm:"column:is_active;not null;default:1" json:"is_active"`
+	CreatedAt       time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;<-:create;autoCreateTime" json:"created_at"`
+	UpdatedAt       time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;<-:update;autoUpdateTime" json:"updated_at"`
+	DeletedAt       gorm.DeletedAt `gorm:"column:deleted_at" json:"deleted_at"`
+	RefreshTokens   []RefreshToken `gorm:"foreignKey:UserID;references:ID" json:"refresh_tokens"`
 }
 
 // TableName User's table name

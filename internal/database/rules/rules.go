@@ -10,7 +10,7 @@ import (
 // RegisterAllRules collecting all module relationship rules for GORM Gen
 func RegisterAllRules(g *gen.Generator) {
 	rules := []func(*gen.Generator){
-		auth.RegisterRules,
+		auth.RegisterRulesAuth,
 		user.RegisterRules,
 	}
 

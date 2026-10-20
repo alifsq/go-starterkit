@@ -13,7 +13,9 @@ import (
 type RepositoryUser interface {
 	CreateUser(ctx context.Context, user *models.User) error
 	FindByEmail(ctx context.Context, email string) (*models.User, error)
-	FindByID(ctx context.Context, id int64) (*models.User, error) 
+	FindByID(ctx context.Context, id int64) (*models.User, error)
+	UpdateUser(ctx context.Context, user *models.User) error
+	UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) error
 }
 
 type repositoryUser struct {
@@ -48,7 +50,21 @@ func (r *repositoryUser) FindByID(ctx context.Context, id int64) (*models.User, 
 	u := r.query.User
 	result, err := u.WithContext(ctx).Where(u.ID.Eq(id)).First()
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, response.ErrUserNotFound
+		}
 		return nil, err
 	}
 	return result, nil
+}
+
+func (r *repositoryUser) UpdateUser(ctx context.Context, user *models.User) error {
+	if user == nil {
+		return errors.New("user is required")
+	}
+	return r.db.WithContext(ctx).Save(user).Error
+}
+
+func (r *repositoryUser) UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) error {
+	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("password_hash", passwordHash).Error
 }

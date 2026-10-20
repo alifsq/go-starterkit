@@ -3,6 +3,8 @@ CREATE TABLE
         `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
         `name` VARCHAR(100) NOT NULL,
         `email` VARCHAR(150) NOT NULL,
+        `is_email_verified` BOOLEAN NOT NULL DEFAULT FALSE,
+        `email_verified_at` TIMESTAMP NULL DEFAULT NULL,
         `password_hash` VARCHAR(255) NOT NULL,
         `phone` VARCHAR(20) DEFAULT NULL,
         `address` TEXT DEFAULT NULL,

@@ -1,0 +1,1 @@
+DROP TABLE if EXISTS email_verification_tokens;

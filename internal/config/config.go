@@ -7,6 +7,7 @@ import (
 
 	"github.com/spf13/viper"
 )
+
 type Config struct {
 	// App
 	AppName    string `mapstructure:"APP_NAME"`
@@ -14,6 +15,7 @@ type Config struct {
 	AppPort    string `mapstructure:"APP_PORT"`
 	AppTimeout string `mapstructure:"APP_TIMEOUT"`
 	ApiKey     string `mapstructure:"API_KEY"`
+	AppBaseURL string `mapstructure:"APP_BASE_URL"`
 
 	// Database
 	DBDriver   string `mapstructure:"DB_DRIVER"`
@@ -27,14 +29,24 @@ type Config struct {
 	DBMaxOpenConns    int    `mapstructure:"DB_MAX_OPEN_CONNS"`
 	DBMaxIdleConns    int    `mapstructure:"DB_MAX_IDLE_CONNS"`
 	DBConnMaxLifetime string `mapstructure:"DB_CONN_MAX_LIFETIME"`
+
+	// Mail Config
+	SMTPHost     string `mapstructure:"SMTP_HOST"`
+	SMTPPort     string `mapstructure:"SMTP_PORT"`
+	SMTPUsername string `mapstructure:"SMTP_USERNAME"`
+	SMTPPassword string `mapstructure:"SMTP_PASSWORD"`
+	SMTPFrom     string `mapstructure:"SMTP_FROM"`
+
 	// Migrate DB
 	MigrateDatabaseURL string `mapstructure:"MIGRATE_DATABASE_URL"`
 	MigratePath        string `mapstructure:"MIGRATE_PATH"`
+
 	// JWT Config
 	JwtSecret          string        `mapstructure:"JWT_SECRET"`
 	JwtAccessTokenExp  time.Duration `mapstructure:"JWT_ACCESS_TOKEN_EXP"`
 	JwtRefreshTokenExp time.Duration `mapstructure:"JWT_REFRESH_TOKEN_EXP"`
 }
+
 var (
 	appConfig *Config
 	cfgOnce   sync.Once

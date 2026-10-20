@@ -31,6 +31,8 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.ID = field.NewInt64(tableName, "id")
 	_user.Name = field.NewString(tableName, "name")
 	_user.Email = field.NewString(tableName, "email")
+	_user.IsEmailVerified = field.NewBool(tableName, "is_email_verified")
+	_user.EmailVerifiedAt = field.NewTime(tableName, "email_verified_at")
 	_user.PasswordHash = field.NewString(tableName, "password_hash")
 	_user.Phone = field.NewString(tableName, "phone")
 	_user.Address = field.NewString(tableName, "address")
@@ -39,10 +41,16 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_user.DeletedAt = field.NewField(tableName, "deleted_at")
-	_user.RefreshTokens = userHasManyRefreshTokens{
+	_user.EmailVerificationTokens = userHasManyEmailVerificationTokens{
 		db: db.Session(&gorm.Session{}),
 
-		RelationField: field.NewRelation("RefreshTokens", "models.RefreshToken"),
+		RelationField: field.NewRelation("EmailVerificationTokens", "models.EmailVerificationToken"),
+	}
+
+	_user.PasswordResetTokens = userHasManyPasswordResetTokens{
+		db: db.Session(&gorm.Session{}),
+
+		RelationField: field.NewRelation("PasswordResetTokens", "models.PasswordResetToken"),
 	}
 
 	_user.fillFieldMap()
@@ -53,19 +61,23 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo userDo
 
-	ALL           field.Asterisk
-	ID            field.Int64
-	Name          field.String
-	Email         field.String
-	PasswordHash  field.String
-	Phone         field.String
-	Address       field.String
-	Role          field.String
-	IsActive      field.Bool
-	CreatedAt     field.Time
-	UpdatedAt     field.Time
-	DeletedAt     field.Field
-	RefreshTokens userHasManyRefreshTokens
+	ALL                     field.Asterisk
+	ID                      field.Int64
+	Name                    field.String
+	Email                   field.String
+	IsEmailVerified         field.Bool
+	EmailVerifiedAt         field.Time
+	PasswordHash            field.String
+	Phone                   field.String
+	Address                 field.String
+	Role                    field.String
+	IsActive                field.Bool
+	CreatedAt               field.Time
+	UpdatedAt               field.Time
+	DeletedAt               field.Field
+	EmailVerificationTokens userHasManyEmailVerificationTokens
+
+	PasswordResetTokens userHasManyPasswordResetTokens
 
 	fieldMap map[string]field.Expr
 }
@@ -85,6 +97,8 @@ func (u *user) updateTableName(table string) *user {
 	u.ID = field.NewInt64(table, "id")
 	u.Name = field.NewString(table, "name")
 	u.Email = field.NewString(table, "email")
+	u.IsEmailVerified = field.NewBool(table, "is_email_verified")
+	u.EmailVerifiedAt = field.NewTime(table, "email_verified_at")
 	u.PasswordHash = field.NewString(table, "password_hash")
 	u.Phone = field.NewString(table, "phone")
 	u.Address = field.NewString(table, "address")
@@ -117,10 +131,12 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 12)
+	u.fieldMap = make(map[string]field.Expr, 15)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["name"] = u.Name
 	u.fieldMap["email"] = u.Email
+	u.fieldMap["is_email_verified"] = u.IsEmailVerified
+	u.fieldMap["email_verified_at"] = u.EmailVerifiedAt
 	u.fieldMap["password_hash"] = u.PasswordHash
 	u.fieldMap["phone"] = u.Phone
 	u.fieldMap["address"] = u.Address
@@ -134,24 +150,27 @@ func (u *user) fillFieldMap() {
 
 func (u user) clone(db *gorm.DB) user {
 	u.userDo.ReplaceConnPool(db.Statement.ConnPool)
-	u.RefreshTokens.db = db.Session(&gorm.Session{Initialized: true})
-	u.RefreshTokens.db.Statement.ConnPool = db.Statement.ConnPool
+	u.EmailVerificationTokens.db = db.Session(&gorm.Session{Initialized: true})
+	u.EmailVerificationTokens.db.Statement.ConnPool = db.Statement.ConnPool
+	u.PasswordResetTokens.db = db.Session(&gorm.Session{Initialized: true})
+	u.PasswordResetTokens.db.Statement.ConnPool = db.Statement.ConnPool
 	return u
 }
 
 func (u user) replaceDB(db *gorm.DB) user {
 	u.userDo.ReplaceDB(db)
-	u.RefreshTokens.db = db.Session(&gorm.Session{})
+	u.EmailVerificationTokens.db = db.Session(&gorm.Session{})
+	u.PasswordResetTokens.db = db.Session(&gorm.Session{})
 	return u
 }
 
-type userHasManyRefreshTokens struct {
+type userHasManyEmailVerificationTokens struct {
 	db *gorm.DB
 
 	field.RelationField
 }
 
-func (a userHasManyRefreshTokens) Where(conds ...field.Expr) *userHasManyRefreshTokens {
+func (a userHasManyEmailVerificationTokens) Where(conds ...field.Expr) *userHasManyEmailVerificationTokens {
 	if len(conds) == 0 {
 		return &a
 	}
@@ -164,32 +183,32 @@ func (a userHasManyRefreshTokens) Where(conds ...field.Expr) *userHasManyRefresh
 	return &a
 }
 
-func (a userHasManyRefreshTokens) WithContext(ctx context.Context) *userHasManyRefreshTokens {
+func (a userHasManyEmailVerificationTokens) WithContext(ctx context.Context) *userHasManyEmailVerificationTokens {
 	a.db = a.db.WithContext(ctx)
 	return &a
 }
 
-func (a userHasManyRefreshTokens) Session(session *gorm.Session) *userHasManyRefreshTokens {
+func (a userHasManyEmailVerificationTokens) Session(session *gorm.Session) *userHasManyEmailVerificationTokens {
 	a.db = a.db.Session(session)
 	return &a
 }
 
-func (a userHasManyRefreshTokens) Model(m *models.User) *userHasManyRefreshTokensTx {
-	return &userHasManyRefreshTokensTx{a.db.Model(m).Association(a.Name())}
+func (a userHasManyEmailVerificationTokens) Model(m *models.User) *userHasManyEmailVerificationTokensTx {
+	return &userHasManyEmailVerificationTokensTx{a.db.Model(m).Association(a.Name())}
 }
 
-func (a userHasManyRefreshTokens) Unscoped() *userHasManyRefreshTokens {
+func (a userHasManyEmailVerificationTokens) Unscoped() *userHasManyEmailVerificationTokens {
 	a.db = a.db.Unscoped()
 	return &a
 }
 
-type userHasManyRefreshTokensTx struct{ tx *gorm.Association }
+type userHasManyEmailVerificationTokensTx struct{ tx *gorm.Association }
 
-func (a userHasManyRefreshTokensTx) Find() (result []*models.RefreshToken, err error) {
+func (a userHasManyEmailVerificationTokensTx) Find() (result []*models.EmailVerificationToken, err error) {
 	return result, a.tx.Find(&result)
 }
 
-func (a userHasManyRefreshTokensTx) Append(values ...*models.RefreshToken) (err error) {
+func (a userHasManyEmailVerificationTokensTx) Append(values ...*models.EmailVerificationToken) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -197,7 +216,7 @@ func (a userHasManyRefreshTokensTx) Append(values ...*models.RefreshToken) (err 
 	return a.tx.Append(targetValues...)
 }
 
-func (a userHasManyRefreshTokensTx) Replace(values ...*models.RefreshToken) (err error) {
+func (a userHasManyEmailVerificationTokensTx) Replace(values ...*models.EmailVerificationToken) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -205,7 +224,7 @@ func (a userHasManyRefreshTokensTx) Replace(values ...*models.RefreshToken) (err
 	return a.tx.Replace(targetValues...)
 }
 
-func (a userHasManyRefreshTokensTx) Delete(values ...*models.RefreshToken) (err error) {
+func (a userHasManyEmailVerificationTokensTx) Delete(values ...*models.EmailVerificationToken) (err error) {
 	targetValues := make([]interface{}, len(values))
 	for i, v := range values {
 		targetValues[i] = v
@@ -213,15 +232,96 @@ func (a userHasManyRefreshTokensTx) Delete(values ...*models.RefreshToken) (err 
 	return a.tx.Delete(targetValues...)
 }
 
-func (a userHasManyRefreshTokensTx) Clear() error {
+func (a userHasManyEmailVerificationTokensTx) Clear() error {
 	return a.tx.Clear()
 }
 
-func (a userHasManyRefreshTokensTx) Count() int64 {
+func (a userHasManyEmailVerificationTokensTx) Count() int64 {
 	return a.tx.Count()
 }
 
-func (a userHasManyRefreshTokensTx) Unscoped() *userHasManyRefreshTokensTx {
+func (a userHasManyEmailVerificationTokensTx) Unscoped() *userHasManyEmailVerificationTokensTx {
+	a.tx = a.tx.Unscoped()
+	return &a
+}
+
+type userHasManyPasswordResetTokens struct {
+	db *gorm.DB
+
+	field.RelationField
+}
+
+func (a userHasManyPasswordResetTokens) Where(conds ...field.Expr) *userHasManyPasswordResetTokens {
+	if len(conds) == 0 {
+		return &a
+	}
+
+	exprs := make([]clause.Expression, 0, len(conds))
+	for _, cond := range conds {
+		exprs = append(exprs, cond.BeCond().(clause.Expression))
+	}
+	a.db = a.db.Clauses(clause.Where{Exprs: exprs})
+	return &a
+}
+
+func (a userHasManyPasswordResetTokens) WithContext(ctx context.Context) *userHasManyPasswordResetTokens {
+	a.db = a.db.WithContext(ctx)
+	return &a
+}
+
+func (a userHasManyPasswordResetTokens) Session(session *gorm.Session) *userHasManyPasswordResetTokens {
+	a.db = a.db.Session(session)
+	return &a
+}
+
+func (a userHasManyPasswordResetTokens) Model(m *models.User) *userHasManyPasswordResetTokensTx {
+	return &userHasManyPasswordResetTokensTx{a.db.Model(m).Association(a.Name())}
+}
+
+func (a userHasManyPasswordResetTokens) Unscoped() *userHasManyPasswordResetTokens {
+	a.db = a.db.Unscoped()
+	return &a
+}
+
+type userHasManyPasswordResetTokensTx struct{ tx *gorm.Association }
+
+func (a userHasManyPasswordResetTokensTx) Find() (result []*models.PasswordResetToken, err error) {
+	return result, a.tx.Find(&result)
+}
+
+func (a userHasManyPasswordResetTokensTx) Append(values ...*models.PasswordResetToken) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Append(targetValues...)
+}
+
+func (a userHasManyPasswordResetTokensTx) Replace(values ...*models.PasswordResetToken) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Replace(targetValues...)
+}
+
+func (a userHasManyPasswordResetTokensTx) Delete(values ...*models.PasswordResetToken) (err error) {
+	targetValues := make([]interface{}, len(values))
+	for i, v := range values {
+		targetValues[i] = v
+	}
+	return a.tx.Delete(targetValues...)
+}
+
+func (a userHasManyPasswordResetTokensTx) Clear() error {
+	return a.tx.Clear()
+}
+
+func (a userHasManyPasswordResetTokensTx) Count() int64 {
+	return a.tx.Count()
+}
+
+func (a userHasManyPasswordResetTokensTx) Unscoped() *userHasManyPasswordResetTokensTx {
 	a.tx = a.tx.Unscoped()
 	return &a
 }
