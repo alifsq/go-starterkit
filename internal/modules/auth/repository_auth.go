@@ -27,6 +27,7 @@ type RepositoryAuth interface {
 	SaveEmailVerificationToken(ctx context.Context, token *models.EmailVerificationToken) error
 	FindEmailVerificationToken(ctx context.Context, tokenHash string) (*models.EmailVerificationToken, error)
 	MarkEmailVerificationTokenAsUsed(ctx context.Context, tokenID int64) error
+	MarkUserEmailAsVerified(ctx context.Context, userID int64) error
 
 	// Password Reset Token Methods
 	SavePasswordResetToken(ctx context.Context, token *models.PasswordResetToken) error
@@ -109,6 +110,14 @@ func (r *repositoryAuth) MarkEmailVerificationTokenAsUsed(ctx context.Context, t
 	now := time.Now()
 	_, err := evt.WithContext(ctx).Where(evt.ID.Eq(tokenID)).Update(evt.UsedAt, &now)
 	return err
+
+}
+
+func (r *repositoryAuth) MarkUserEmailAsVerified(ctx context.Context, userID int64) error {
+	u := r.query.User
+	now := time.Now()
+	_, err := u.WithContext(ctx).Where(u.ID.Eq(userID)).UpdateSimple(u.EmailVerifiedAt.Value(now), u.IsEmailVerified.Value(true))
+	return err
 }
 
 func (r *repositoryAuth) SavePasswordResetToken(ctx context.Context, token *models.PasswordResetToken) error {
@@ -127,4 +136,3 @@ func (r *repositoryAuth) MarkPasswordResetTokenAsUsed(ctx context.Context, token
 	_, err := prt.WithContext(ctx).Where(prt.ID.Eq(tokenID)).Update(prt.UsedAt, &now)
 	return err
 }
-

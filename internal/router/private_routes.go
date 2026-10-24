@@ -9,7 +9,10 @@ import (
 func (app *AppHandler) registerProtectedRoutes(rg *gin.RouterGroup) {
 	// Buat group yang dilindungi Middleware JWT Auth
 	protected := rg.Group("")
-	protected.Use(middleware.Auth(app.jwtSvc))
+	protected.Use(
+		middleware.Auth(app.jwtSvc),
+		middleware.CasbinMiddleware(app.Enforcer),
+	)
 	{
 		// Modul Auth Protected Routes (/revoke-all)
 		app.AuthHandler.RegisterProtectedRoutes(protected)

@@ -17,7 +17,7 @@ type EmailSender interface {
 
 type noopEmailSender struct{}
 
-func (n *noopEmailSender) SendVerificationEmail(_ context.Context, _, _ string) error { return nil }
+func (n *noopEmailSender) SendVerificationEmail(_ context.Context, _, _ string) error  { return nil }
 func (n *noopEmailSender) SendPasswordResetEmail(_ context.Context, _, _ string) error { return nil }
 
 type smtpEmailSender struct {
@@ -78,14 +78,13 @@ func (s *smtpEmailSender) emailLink(path, token string) string {
 	return s.baseURL + "/" + strings.TrimLeft(path, "/") + "?token=" + url.QueryEscape(token)
 }
 
-func buildEmailMessage(subject, toEmail, body string) []byte {
+func buildEmailMessage(subject, toEmail, bodyHTML string) []byte {
 	return []byte("To: " + toEmail + "\r\n" +
 		"Subject: " + subject + "\r\n" +
 		"MIME-Version: 1.0\r\n" +
-		"Content-Type: text/plain; charset=UTF-8\r\n\r\n" +
-		body + "\r\n")
+		"Content-Type: text/html; charset=UTF-8\r\n\r\n" +
+		bodyHTML + "\r\n")
 }
-
 func (s *smtpEmailSender) sendMail(toEmail string, content []byte) error {
 	auth := smtp.PlainAuth("", s.username, s.password, s.host)
 	return smtp.SendMail(s.host+":"+strconv.Itoa(s.port), auth, s.from, []string{toEmail}, content)

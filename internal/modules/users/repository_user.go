@@ -16,6 +16,7 @@ type RepositoryUser interface {
 	FindByID(ctx context.Context, id int64) (*models.User, error)
 	UpdateUser(ctx context.Context, user *models.User) error
 	UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) error
+	GetUsersPaginate(ctx context.Context, page, pageSize int) ([]*models.User, int64, error)
 }
 
 type repositoryUser struct {
@@ -67,4 +68,20 @@ func (r *repositoryUser) UpdateUser(ctx context.Context, user *models.User) erro
 
 func (r *repositoryUser) UpdateUserPassword(ctx context.Context, userID int64, passwordHash string) error {
 	return r.db.WithContext(ctx).Model(&models.User{}).Where("id = ?", userID).Update("password_hash", passwordHash).Error
+}
+
+func (r *repositoryUser) GetUsersPaginate(ctx context.Context, page, pageSize int) ([]*models.User, int64, error) {
+
+	offset := (page - 1) * pageSize
+	// total
+	total, err := r.query.User.WithContext(ctx).Count()
+	if err != nil {
+		return nil, 0, err
+	}
+
+	users, err := r.query.User.WithContext(ctx).Limit(pageSize).Offset(offset).Find()
+	if err != nil {
+		return nil, 0, err
+	}
+	return users, total, nil
 }

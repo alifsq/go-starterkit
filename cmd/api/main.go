@@ -2,20 +2,25 @@ package main
 
 import (
 	"go-starterkit/internal/bootstrap"
-	"log"
+
+	"go.uber.org/zap"
 )
 
-func main(){
-	app,cleaup, err := bootstrap.InitializeApp()
+func main() {
+	logger, err := zap.NewProduction()
 	if err != nil {
-		log.Fatalf("Failed to initialize application: %v", err)
+		panic("Failed to initialize zap logger: " + err.Error())
 	}
-	
+	app, cleaup, err := bootstrap.InitializeApp()
+	if err != nil {
+		logger.Fatal("Failed to initialize application", zap.Error(err))
+	}
+
 	defer cleaup()
 
 	// 2. Nyalakan server Gin
 	if err := app.Start(); err != nil {
-		log.Fatalf("Server stopped with error: %v", err)
+		logger.Fatal("Server stopped with error", zap.Error(err))
 	}
-	
+
 }

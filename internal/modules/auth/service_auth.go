@@ -318,6 +318,11 @@ func (s *serviceAuth) VerifyEmail(ctx context.Context, plainToken string) error 
 		return err
 	}
 
+	if err:=s.authRepo.MarkUserEmailAsVerified(ctx,tokenModel.UserID);err!=nil{
+		s.log.Error("Failed to Update Verified user status",zap.Error(err),zap.Int64("user_id",tokenModel.UserID))
+		return err
+	} 
+
 	s.log.Info("Email verified successfully", zap.Int64("user_id", tokenModel.UserID))
 	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"go-starterkit/internal/modules/users"
 	"go-starterkit/internal/package/jwt"
 	"go-starterkit/internal/package/mail"
+	"go-starterkit/internal/package/rbac"
 	"go-starterkit/internal/router"
 )
 
@@ -46,9 +47,14 @@ func InitializeApp() (*App, func(), error) {
 	mailer := mail.NewMailer(mailerConfig, logger)
 	serviceAuth := auth.NewServiceAuth(repositoryAuth, repositoryUser, jwtService, mailer, logger)
 	handlerAuth := auth.NewHandlerAuth(serviceAuth, logger)
-	appHandler := router.NewAppHandler(configConfig, logger, jwtService, handlerUser, handlerAuth)
+	enforcer, err := rbac.ProvideEnforcer(gormDB)
+	if err != nil {
+		cleanup()
+		return nil, nil, err
+	}
+	appHandler := router.NewAppHandler(configConfig, logger, jwtService, handlerUser, handlerAuth, enforcer)
 	worker := NewWorker(serviceAuth)
-	app := NewApp(configConfig, appHandler, worker)
+	app := NewApp(configConfig, appHandler, worker, enforcer, logger)
 	return app, func() {
 		cleanup()
 	}, nil

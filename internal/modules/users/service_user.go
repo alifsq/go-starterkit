@@ -6,13 +6,17 @@ import (
 	"fmt"
 
 	"go-starterkit/internal/database/models"
+	"go-starterkit/internal/modules/users/dto"
+	"go-starterkit/internal/modules/users/mapper"
 	"go-starterkit/internal/response"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
 type ServiceUser interface {
-	CreateUser(ctx context.Context, req CreateUserRequest) (*CreateUserResponse, error)
+	CreateUser(ctx context.Context, req dto.CreateUserRequest) (*dto.CreateUserResponse, error)
+	GetMyProfile(ctx context.Context, id int64) (*models.User, error)
+	GetAllUsersPaginate(ctx context.Context, page, pageSize int) ([]dto.UserResponse, int64, error)
 }
 
 type serviceUser struct {
@@ -25,7 +29,7 @@ func NewServiceUser(repo RepositoryUser) ServiceUser {
 	}
 }
 
-func (s *serviceUser) CreateUser(ctx context.Context, req CreateUserRequest) (*CreateUserResponse, error) {
+func (s *serviceUser) CreateUser(ctx context.Context, req dto.CreateUserRequest) (*dto.CreateUserResponse, error) {
 	// Check duplicate email
 	existingUser, err := s.repo.FindByEmail(ctx, req.Email)
 	if err == nil && existingUser != nil {
@@ -64,10 +68,32 @@ func (s *serviceUser) CreateUser(ctx context.Context, req CreateUserRequest) (*C
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	return &CreateUserResponse{
+	return &dto.CreateUserResponse{
 		ID:    uint64(user.ID),
 		Email: req.Email,
 		Name:  req.Name,
 		Role:  role,
 	}, nil
+}
+
+func (s *serviceUser) GetMyProfile(ctx context.Context, id int64) (*models.User, error) {
+	return s.repo.FindByID(ctx, id)
+}
+
+func (s *serviceUser) GetAllUsersPaginate(ctx context.Context, page, pageSize int) ([]dto.UserResponse, int64, error) {
+	if page <= 0 {
+		page = 1
+	}
+	if pageSize <= 0 {
+		pageSize = 10 // Default 10 data per halaman
+	}
+
+	users, total, err := s.repo.GetUsersPaginate(ctx, page, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Konversi ke DTO menggunakan helper yang sudah kita buat sebelumnya
+	response := mapper.ToUserResponseList(users)
+	return response, total, nil
 }

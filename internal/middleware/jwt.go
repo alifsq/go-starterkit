@@ -41,8 +41,8 @@ func Auth(jwtService jwt.JWTService) gin.HandlerFunc {
 		}
 
 		// 4. Inject UserID dan Role ke Gin Context
-		c.Set(constants.CtxUserID, claims.UserID)
-		c.Set(constants.CtxUserRole, claims.Role)
+		c.Set(constants.CtxUserID.String(), claims.UserID)
+		c.Set(constants.CtxUserRole.String(), claims.Role)
 
 		c.Next()
 	}

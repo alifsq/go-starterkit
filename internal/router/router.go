@@ -9,6 +9,7 @@ import (
 	"go-starterkit/internal/package/logger"
 	"net/http"
 
+	"github.com/casbin/casbin/v3"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
 )
@@ -26,6 +27,7 @@ type AppHandler struct {
 	jwtSvc      jwt.JWTService
 	UserHandler *user.HandlerUser
 	AuthHandler *auth.HandlerAuth
+	Enforcer    *casbin.Enforcer
 }
 
 func NewAppHandler(
@@ -34,12 +36,14 @@ func NewAppHandler(
 	jwtSvc jwt.JWTService,
 	userH *user.HandlerUser,
 	AuthH *auth.HandlerAuth,
+	Enforcer *casbin.Enforcer,
 ) *AppHandler {
 	return &AppHandler{
 		config:      cfg,
 		jwtSvc:      jwtSvc,
 		UserHandler: userH,
 		AuthHandler: AuthH,
+		Enforcer:    Enforcer,
 	}
 }
 

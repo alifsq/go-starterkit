@@ -7,6 +7,7 @@ type Response struct {
 	Message string `json:"message"`
 	Data    any    `json:"data,omitempty"`
 	Errors  any    `json:"errors,omitempty"`
+	Meta    any    `json:"errors,omitempty"`
 }
 
 func Success(c *gin.Context, statusCode int, message string, data any) {
@@ -14,6 +15,15 @@ func Success(c *gin.Context, statusCode int, message string, data any) {
 		Success: true,
 		Message: message,
 		Data:    data,
+	})
+}
+
+func SuccessWithMeta(c *gin.Context, statusCode int, message string, data any, meta any) {
+	c.JSON(statusCode, Response{
+		Success: true,
+		Message: message,
+		Data:    data,
+		Meta:    meta,
 	})
 }
 

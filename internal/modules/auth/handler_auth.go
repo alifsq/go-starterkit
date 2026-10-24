@@ -144,7 +144,7 @@ func (h *HandlerAuth) Refresh(c *gin.Context) {
 }
 
 func (h *HandlerAuth) RevokeAll(c *gin.Context) {
-	val, exists := c.Get(constants.CtxUserRole.String())
+	val, exists := c.Get(constants.CtxUserID.String())
 	if !exists {
 		response.Error(c, http.StatusUnauthorized, "User ID tidak ditemukan", nil)
 		return
