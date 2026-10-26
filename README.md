@@ -11,7 +11,9 @@ A production-ready and modular Go backend starter kit built with clean architect
 - **Authentication**: JWT-based authentication featuring access token, refresh token workflows, and session revocation.
 - **Email Delivery**: Automated email verification system with time-limited tokens sent via SMTP.
 - **Configuration**: Centralized configuration management using [Viper](https://github.com/spf13/viper).
-- **Security & Validation**: Request validation and structured logging integrated out of the box.
+- **Security & Access Control**:
+  - **Role-Based Access Control (RBAC)** powered by Casbin for fine-grained permissions
+  - **Rate Limiting** backed by Redis to prevent API abuse and brute-force attacks HttpOnly Cookie protection for sensitive tokens
 
 ## 🛠️ Tech Stack
 
@@ -24,6 +26,7 @@ A production-ready and modular Go backend starter kit built with clean architect
 - **Dependency Injection**: Google Wire
 - **Configuration**: Viper
 - **Email Service**: SMTP
+- **Role Based Access Control(RBAC)**: Casbin
 
 ## 📦 Getting Started
 
@@ -35,11 +38,13 @@ A production-ready and modular Go backend starter kit built with clean architect
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone [https://github.com/](https://github.com/)<your-username>/<your-repo-name>.git
    cd <your-repo-name>
 
    ```
+
 2. **Setup environment variables**
    ```bash
    cp .env.example .env
@@ -51,10 +56,12 @@ A production-ready and modular Go backend starter kit built with clean architect
 4. **Run Database Migrations**
    ```bash
    make migrate-up
+   ```
 5. **Run the Application**
    ```bash
    make run
-   ````
+   ```
+
 ## 🛠️ Useful Commands (Makefile)
 
 ## 🛠️ Useful Commands (Makefile)
@@ -85,4 +92,5 @@ This project includes a `Makefile` to simplify common commands. Run the followin
   <img src="https://img.shields.io/badge/Google_Wire-4285F4?style=for-the-badge&logo=google&logoColor=white" alt="Google Wire" />
   <img src="https://img.shields.io/badge/Viper-5A29E4?style=for-the-badge&logo=go&logoColor=white" alt="Viper" />
   <img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" />
+  <img src="https://img.shields.io/badge/Casbin-FF4500?style=for-the-badge&logo=security&logoColor=white" alt="Casbin" />
 </p>
