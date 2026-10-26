@@ -8,11 +8,14 @@ package bootstrap
 
 import (
 	"go-starterkit/internal/config"
+	"go-starterkit/internal/middleware"
 	"go-starterkit/internal/modules/auth"
 	"go-starterkit/internal/modules/users"
 	"go-starterkit/internal/package/jwt"
 	"go-starterkit/internal/package/mail"
+	"go-starterkit/internal/package/ratelimiter"
 	"go-starterkit/internal/package/rbac"
+	"go-starterkit/internal/package/redis"
 	"go-starterkit/internal/router"
 )
 
@@ -29,6 +32,12 @@ func InitializeApp() (*App, func(), error) {
 	}
 	string2 := configConfig.JwtSecret
 	jwtService := jwt.NewJWTService(string2)
+	client, err := redis.NewRedisClient(configConfig)
+	if err != nil {
+		return nil, nil, err
+	}
+	limiterEngine := ratelimiter.NewLimiterEngine(client)
+	rateLimitMiddleware := middleware.NewLimiteMiddleware(limiterEngine)
 	db, cleanup, err := config.NewMySQLDB(configConfig)
 	if err != nil {
 		return nil, nil, err
@@ -46,13 +55,14 @@ func InitializeApp() (*App, func(), error) {
 	mailerConfig := NewMailerConfig(configConfig)
 	mailer := mail.NewMailer(mailerConfig, logger)
 	serviceAuth := auth.NewServiceAuth(repositoryAuth, repositoryUser, jwtService, mailer, logger)
-	handlerAuth := auth.NewHandlerAuth(serviceAuth, logger)
+	handlerAuth := auth.NewHandlerAuth(serviceAuth, logger, rateLimitMiddleware)
+	routerAuth := auth.NewRouterAuth(handlerAuth, rateLimitMiddleware)
 	enforcer, err := rbac.ProvideEnforcer(gormDB)
 	if err != nil {
 		cleanup()
 		return nil, nil, err
 	}
-	appHandler := router.NewAppHandler(configConfig, logger, jwtService, handlerUser, handlerAuth, enforcer)
+	appHandler := router.NewAppHandler(configConfig, logger, jwtService, rateLimitMiddleware, handlerUser, routerAuth, enforcer)
 	worker := NewWorker(serviceAuth)
 	app := NewApp(configConfig, appHandler, worker, enforcer, logger)
 	return app, func() {

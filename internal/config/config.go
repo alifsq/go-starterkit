@@ -10,12 +10,13 @@ import (
 
 type Config struct {
 	// App
-	AppName    string `mapstructure:"APP_NAME"`
-	AppEnv     string `mapstructure:"APP_ENV"`
-	AppPort    string `mapstructure:"APP_PORT"`
-	AppTimeout string `mapstructure:"APP_TIMEOUT"`
-	ApiKey     string `mapstructure:"API_KEY"`
-	AppBaseURL string `mapstructure:"APP_BASE_URL"`
+	AppName        string `mapstructure:"APP_NAME"`
+	AppEnv         string `mapstructure:"APP_ENV"`
+	AppPort        string `mapstructure:"APP_PORT"`
+	AppTimeout     string `mapstructure:"APP_TIMEOUT"`
+	ApiKey         string `mapstructure:"API_KEY"`
+	AppBaseURL     string `mapstructure:"APP_BASE_URL"`
+	TrustedProxies string `mapstructure:"TRUSTED_PROXIES"`
 
 	// Database
 	DBDriver   string `mapstructure:"DB_DRIVER"`
@@ -45,6 +46,15 @@ type Config struct {
 	JwtSecret          string        `mapstructure:"JWT_SECRET"`
 	JwtAccessTokenExp  time.Duration `mapstructure:"JWT_ACCESS_TOKEN_EXP"`
 	JwtRefreshTokenExp time.Duration `mapstructure:"JWT_REFRESH_TOKEN_EXP"`
+
+	// REDIS CONFIG
+	Addr         string        `mapstructure:"REDIS_ADDR"`
+	Password     string        `mapstructure:"REDIS_PASSWORD"`
+	DB           int           `mapstructure:"REDIS_DB"`
+	PoolSize     int           `mapstructure:"REDIS_POOL_SIZE"`
+	DialTimeout  time.Duration `mapstructure:"REDIS_DIAL_TIMEOUT"`
+	ReadTimeout  time.Duration `mapstructure:"REDIS_READ_TIMEOUT"`
+	WriteTimeout time.Duration `mapstructure:"REDIS_WRITE_TIMEOUT"`
 }
 
 var (

@@ -28,7 +28,8 @@ type RepositoryAuth interface {
 	FindEmailVerificationToken(ctx context.Context, tokenHash string) (*models.EmailVerificationToken, error)
 	MarkEmailVerificationTokenAsUsed(ctx context.Context, tokenID int64) error
 	MarkUserEmailAsVerified(ctx context.Context, userID int64) error
-
+	UpdateEmailVerificationToken(ctx context.Context, evtModel *models.EmailVerificationToken) error
+	
 	// Password Reset Token Methods
 	SavePasswordResetToken(ctx context.Context, token *models.PasswordResetToken) error
 	FindPasswordResetToken(ctx context.Context, tokenHash string) (*models.PasswordResetToken, error)
@@ -79,7 +80,15 @@ func (r *repositoryAuth) FindRefreshTokenByHash(ctx context.Context, tokenHash s
 
 func (r *repositoryAuth) RevokeToken(ctx context.Context, tokenHash string) error {
 	rt := r.query.RefreshToken
-	_, err := rt.WithContext(ctx).Where(rt.TokenHash.Eq(tokenHash)).Update(rt.IsRevoked, true)
+	_, err := rt.WithContext(ctx).Where(rt.TokenHash.Eq(tokenHash)).First()
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("refresh token not found")
+		}
+		return err
+	}
+
+	_, err = rt.WithContext(ctx).Where(rt.TokenHash.Eq(tokenHash)).Update(rt.IsRevoked, true)
 	return err
 }
 
@@ -98,6 +107,12 @@ func (r *repositoryAuth) DeleteExpiredTokens(ctx context.Context) error {
 func (r *repositoryAuth) SaveEmailVerificationToken(ctx context.Context, token *models.EmailVerificationToken) error {
 	evt := r.query.EmailVerificationToken
 	return evt.WithContext(ctx).Create(token)
+}
+
+func (r *repositoryAuth) UpdateEmailVerificationToken(ctx context.Context, evtModel *models.EmailVerificationToken) error {
+	evt := r.query.EmailVerificationToken
+	_, err := evt.WithContext(ctx).Where(evt.UserID.Eq(evtModel.UserID)).Updates(evtModel)
+	return err
 }
 
 func (r *repositoryAuth) FindEmailVerificationToken(ctx context.Context, tokenHash string) (*models.EmailVerificationToken, error) {

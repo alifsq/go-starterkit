@@ -37,6 +37,7 @@ type ServiceAuth interface {
 	VerifyEmail(ctx context.Context, plainToken string) error
 	ForgotPassword(ctx context.Context, email string) error
 	ResetPassword(ctx context.Context, plainToken, newPassword string) error
+	ResendVerificationEmail(ctx context.Context, userID int64) error
 }
 
 type serviceAuth struct {
@@ -318,10 +319,10 @@ func (s *serviceAuth) VerifyEmail(ctx context.Context, plainToken string) error 
 		return err
 	}
 
-	if err:=s.authRepo.MarkUserEmailAsVerified(ctx,tokenModel.UserID);err!=nil{
-		s.log.Error("Failed to Update Verified user status",zap.Error(err),zap.Int64("user_id",tokenModel.UserID))
+	if err := s.authRepo.MarkUserEmailAsVerified(ctx, tokenModel.UserID); err != nil {
+		s.log.Error("Failed to Update Verified user status", zap.Error(err), zap.Int64("user_id", tokenModel.UserID))
 		return err
-	} 
+	}
 
 	s.log.Info("Email verified successfully", zap.Int64("user_id", tokenModel.UserID))
 	return nil
@@ -414,5 +415,45 @@ func (s *serviceAuth) ResetPassword(ctx context.Context, plainToken, newPassword
 	}
 
 	s.log.Info("Password reset successful", zap.Int64("user_id", tokenModel.UserID))
+	return nil
+}
+
+func (s *serviceAuth) ResendVerificationEmail(ctx context.Context, userID int64) error {
+	// Find User ID check verification user
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return errors.New("User NotFound")
+	}
+
+	if user.IsEmailVerified {
+		return errors.New("Account verified")
+	}
+
+	// GenerateNewToken
+	plainToken, tokenHash, err := generateToken()
+	if err != nil {
+		s.log.Error("Failed to generate verification token", zap.Error(err))
+		return err
+	}
+
+	tokenModel := &models.EmailVerificationToken{
+		UserID:    user.ID,
+		TokenHash: tokenHash,
+		ExpiresAt: time.Now().Add(24 * time.Hour), // Expire 24 jam
+	}
+
+	// update token verifikasi
+	err = s.authRepo.UpdateEmailVerificationToken(ctx, tokenModel)
+	if err != nil {
+		s.log.Error("Failed Update Token Verification Email", zap.Error(err))
+		return err
+	}
+
+	// send email
+	go func() {
+		if err := s.mail.SendVerificationEmail(ctx, user.Email, plainToken); err != nil {
+			s.log.Error("Background task: Failed to send verification email", zap.Error(err), zap.String("email", user.Email))
+		}
+	}()
 	return nil
 }

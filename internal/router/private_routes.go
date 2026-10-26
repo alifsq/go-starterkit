@@ -15,7 +15,7 @@ func (app *AppHandler) registerProtectedRoutes(rg *gin.RouterGroup) {
 	)
 	{
 		// Modul Auth Protected Routes (/revoke-all)
-		app.AuthHandler.RegisterProtectedRoutes(protected)
+		app.RouteAuth.RegisterProtectedRoutes(protected)
 
 		// Modul Users Routes
 		app.UserHandler.RoutesUser(protected)

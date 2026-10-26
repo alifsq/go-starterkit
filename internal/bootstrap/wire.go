@@ -10,6 +10,7 @@ import (
 	"go-starterkit/internal/package/jwt"
 	"go-starterkit/internal/package/mail"
 	"go-starterkit/internal/package/rbac"
+	"go-starterkit/internal/package/redis"
 	"go-starterkit/internal/router"
 
 	"github.com/google/wire"
@@ -30,6 +31,7 @@ func InitializeApp() (*App, func(), error) {
 		NewMailerConfig,    // Provider Mailer Config
 		mail.MailSet,       // Provider Mailer
 		rbac.RBACSet,       // Provider RBAC casbin
+		redis.RedisSet,     // Provider Redis
 	)
 	return nil, nil, nil
 

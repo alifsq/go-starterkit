@@ -6,4 +6,5 @@ var AuthSet = wire.NewSet(
 	NewRepositoryAuth,
 	NewServiceAuth,
 	NewHandlerAuth,
+	NewRouterAuth,
 )

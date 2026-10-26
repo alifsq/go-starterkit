@@ -8,22 +8,23 @@ import (
 	"io"
 	"net/http"
 	"strconv"
-	"time"
+	"strings"
 
 	"github.com/gin-gonic/gin"
+	"go-starterkit/internal/middleware"
 	"go.uber.org/zap"
 )
 
 type HandlerAuth struct {
 	service     ServiceAuth
-	rateLimiter *inMemoryRateLimiter
+	rateLimiter *middleware.RateLimitMiddleware
 	log         logger.Logger
 }
 
-func NewHandlerAuth(s ServiceAuth, log logger.Logger) *HandlerAuth {
+func NewHandlerAuth(s ServiceAuth, log logger.Logger, rateLimiter *middleware.RateLimitMiddleware) *HandlerAuth {
 	return &HandlerAuth{
 		service:     s,
-		rateLimiter: newInMemoryRateLimiter(),
+		rateLimiter: rateLimiter,
 		log:         log,
 	}
 }
@@ -46,20 +47,7 @@ func readRefreshToken(c *gin.Context) (string, error) {
 	return req.RefreshToken, nil
 }
 
-func (h *HandlerAuth) rateLimit(c *gin.Context, bucket string, max int, window time.Duration) bool {
-	if !h.rateLimiter.Allow(bucket+":"+c.ClientIP(), window, max) {
-		c.Header("Retry-After", strconv.Itoa(int(window.Seconds())))
-		response.Error(c, http.StatusTooManyRequests, "Too many requests. Please try again later.", nil)
-		return false
-	}
-	return true
-}
-
 func (h *HandlerAuth) Login(c *gin.Context) {
-	if !h.rateLimit(c, "login", 5, time.Minute) {
-		return
-	}
-
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		if formattedErrs := response.FormatValidationError(err); formattedErrs != nil {
@@ -75,6 +63,21 @@ func (h *HandlerAuth) Login(c *gin.Context) {
 
 	accessToken, refreshToken, err := h.service.Login(c.Request.Context(), req.Email, req.Password, userAgent, ipAddress)
 	if err != nil {
+		limit, limitErr := h.rateLimiter.CheckLimit(c.Request.Context(), "login_failure", strings.ToLower(strings.TrimSpace(req.Email)))
+		if limitErr != nil {
+			c.Error(limitErr)
+			response.Error(c, http.StatusServiceUnavailable, "Rate limiting is temporarily unavailable", nil)
+			return
+		}
+		if !limit.Allowed {
+			retryAfter := limit.RetryAfter
+			if retryAfter < 1 {
+				retryAfter = 1
+			}
+			c.Header("Retry-After", strconv.FormatInt(retryAfter, 10))
+			response.Error(c, http.StatusTooManyRequests, "Too many failed login attempts. Please try again later.", nil)
+			return
+		}
 		response.Error(c, http.StatusUnauthorized, err.Error(), nil)
 		return
 	}
@@ -86,9 +89,19 @@ func (h *HandlerAuth) Login(c *gin.Context) {
 }
 
 func (h *HandlerAuth) Logout(c *gin.Context) {
-	refreshToken, err := c.Cookie("refresh_token")
-	if err == nil && refreshToken != "" {
-		_ = h.service.Logout(c.Request.Context(), refreshToken)
+	refreshToken, err := readRefreshToken(c)
+	if err != nil {
+		response.Error(c, http.StatusBadRequest, "Invalid request", err.Error())
+		return
+	}
+	if strings.TrimSpace(refreshToken) == "" {
+		response.Error(c, http.StatusUnauthorized, "Refresh token not found", nil)
+		return
+	}
+	if err := h.service.Logout(c.Request.Context(), refreshToken); err != nil {
+		h.log.Error("Failed to revoke refresh token", zap.Error(err))
+		response.Error(c, http.StatusInternalServerError, "Logout failed", nil)
+		return
 	}
 
 	setRefreshCookie(c, "", -1)
@@ -180,11 +193,25 @@ func (h *HandlerAuth) VerifyEmail(c *gin.Context) {
 	response.Success(c, http.StatusOK, "Email Verified Successfully You Can Now Login", nil)
 }
 
+func (h *HandlerAuth) ResendVerifyEmail(c *gin.Context) {
+
+}
+
 func (h *HandlerAuth) ForgotPassword(c *gin.Context) {
 	var req ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		h.log.Warn("Invalid Forgot Password Request Failed", zap.Error(err))
 		response.Error(c, http.StatusInternalServerError, "Invalid Request Payload", err.Error())
+		return
+	}
+	limit, err := h.rateLimiter.CheckLimit(c.Request.Context(), "email_send_account", strings.ToLower(strings.TrimSpace(req.Email)))
+	if err != nil {
+		c.Error(err)
+		response.Error(c, http.StatusServiceUnavailable, "Rate limiting is temporarily unavailable", nil)
+		return
+	}
+	if !limit.Allowed {
+		response.Error(c, http.StatusOK, "If your email is registered, we have sent a password reset link to your email.", nil)
 		return
 	}
 	if err := h.service.ForgotPassword(c, req.Email); err != nil {
@@ -207,4 +234,28 @@ func (h *HandlerAuth) ResetPassword(c *gin.Context) {
 		return
 	}
 	response.Success(c, http.StatusOK, "Password Reset SuccessFully , you acn now Login", nil)
+}
+
+func (h *HandlerAuth) ResendVerificationEmail(c *gin.Context) {
+	rawUserID, exist := c.Get("user_id")
+	if !exist {
+		response.Error(c, http.StatusUnauthorized, "Unauthorize : User Id Not Found", nil)
+		return
+	}
+
+	// assert to int64
+	userID, ok := rawUserID.(int64)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "User Format Not Valid", nil)
+		return
+	}
+
+	// service
+	err := h.service.ResendVerificationEmail(c, userID)
+	if err != nil {
+		h.log.Error("Resend Verification Email Failed", zap.Error(err))
+		response.Error(c, http.StatusBadRequest, err.Error(), nil)
+		return
+	}
+	response.Success(c, http.StatusOK, "Send Email Verification Success", nil)
 }

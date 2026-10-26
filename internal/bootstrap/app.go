@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"go-starterkit/internal/config"
 	"go-starterkit/internal/package/logger"
 	"go-starterkit/internal/router"
@@ -46,6 +47,15 @@ func (app *App) Start() error {
 
 	// Initialize Engine
 	r := gin.Default()
+	var trustedProxies []string
+	for _, proxy := range strings.Split(app.Config.TrustedProxies, ",") {
+		if proxy = strings.TrimSpace(proxy); proxy != "" {
+			trustedProxies = append(trustedProxies, proxy)
+		}
+	}
+	if err := r.SetTrustedProxies(trustedProxies); err != nil {
+		return fmt.Errorf("invalid TRUSTED_PROXIES configuration: %w", err)
+	}
 
 	// Register Middleware & Routes
 	app.AppHandler.RegisterRoutes(r)

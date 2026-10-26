@@ -17,6 +17,7 @@ import (
 // wire set
 var RouterSet = wire.NewSet(
 	NewAppHandler,
+	middleware.RateLimitSet,
 )
 
 type AppHandler struct {
@@ -25,8 +26,9 @@ type AppHandler struct {
 	// Add Handler In Here
 	log         logger.Logger
 	jwtSvc      jwt.JWTService
+	rateLimiter *middleware.RateLimitMiddleware
 	UserHandler *user.HandlerUser
-	AuthHandler *auth.HandlerAuth
+	RouteAuth   *auth.RouterAuth
 	Enforcer    *casbin.Enforcer
 }
 
@@ -34,15 +36,17 @@ func NewAppHandler(
 	cfg *config.Config,
 	log logger.Logger,
 	jwtSvc jwt.JWTService,
+	rateLimiter *middleware.RateLimitMiddleware,
 	userH *user.HandlerUser,
-	AuthH *auth.HandlerAuth,
+	RouteAuth *auth.RouterAuth,
 	Enforcer *casbin.Enforcer,
 ) *AppHandler {
 	return &AppHandler{
 		config:      cfg,
 		jwtSvc:      jwtSvc,
+		rateLimiter: rateLimiter,
 		UserHandler: userH,
-		AuthHandler: AuthH,
+		RouteAuth:   RouteAuth,
 		Enforcer:    Enforcer,
 	}
 }
@@ -51,6 +55,7 @@ func (app *AppHandler) RegisterRoutes(r *gin.Engine) {
 
 	r.Use(middleware.CORS())
 	r.Use(middleware.LoggerMiddleware(app.log))
+
 	r.Use(gin.Recovery())
 
 	// Health Check
@@ -60,6 +65,7 @@ func (app *AppHandler) RegisterRoutes(r *gin.Engine) {
 
 	// Base API V1 Route Group
 	apiV1 := r.Group("/api/v1")
+	apiV1.Use(app.rateLimiter.LimitByIP("global"))
 	{
 		app.registerPublicRoutes(apiV1)
 		app.registerProtectedRoutes(apiV1)
